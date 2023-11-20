@@ -35,7 +35,7 @@ namespace DIGI_Utils {
                 STATION_Utils::updateLastHeard(sender);
                 STATION_Utils::updatePacketBuffer(packet);
                 Utils::typeOfPacket(packet, "Digi");
-                if ((stationMode==3 || stationMode==5 || stationMode==6) && (packet.indexOf("WIDE1-1") > 10)) { // ver lo de WIDE para sM=6
+                if ((stationMode==3 || stationMode==5 || stationMode==6) && (packet.indexOf("WIDE1-") > 10)) { // MTV 11/19/2023: changed from wide 1-1 to wide 1-x
                     if (stationMode==6 && ((WiFi.status()==WL_CONNECTED) && espClient.connected())) {
                         espClient.write(APRS_IS_Utils::createPacket(packet).c_str());
                         Serial.print("(Uploaded to APRS-IS)");
@@ -47,7 +47,18 @@ namespace DIGI_Utils {
                         loraPacket = packet.substring(3);
                         delay(500);
                     }
-                    loraPacket.replace("WIDE1-1", Config.callsign + "*");
+                    // MTV 11/19/2023 - added function to digi other than just wide1-1
+                    if (loraPacket.indexOf("WIDE1-")>=0) {
+                        String hop = loraPacket.substring(loraPacket.indexOf("WIDE1-")+6, loraPacket.indexOf("WIDE1-")+7);
+                        if (hop.toInt()>=1 && hop.toInt()<=7) {
+                            if (hop.toInt()==1) {
+                                loraPacket.replace("WIDE1-1", Config.callsign + "*");
+                            } else {
+                                loraPacket.replace("WIDE1-" + hop , Config.callsign + "*,WIDE1-" + String(hop.toInt()-1));
+                            }
+                        }
+                    }
+                    // MTV 11/19/2023: removed this line for the ones above:  loraPacket.replace("WIDE1-1", Config.callsign + "*");
                     LoRa_Utils::sendNewPacket("APRS", loraPacket);
                     display_toggle(true);
                     lastScreenOn = millis();
